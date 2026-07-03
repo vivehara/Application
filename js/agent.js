@@ -4,7 +4,9 @@ const { GoogleGenAI } = require('@google/genai');
 require('dotenv').config();
 
 const app = express();
-app.use(cors({ origin: "https://your-website.com" })); // Protect to your domain
+
+// 1. FIXED: Allow CORS from your local machine and your live website
+app.use(cors()); 
 app.use(express.json());
 
 // Initialize Gemini Client safely using system environment variable
@@ -31,8 +33,11 @@ app.post('/api/agent/chat', async (req, res) => {
 
     res.json({ text: response.text });
   } catch (error) {
+    console.error("Error in chat proxy:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-app.listen(5000, () => console.log('Proxy active on port 5000'));
+// 2. FIXED: Use Render's dynamic port variable
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => console.log(`Proxy active on port ${PORT}`));
