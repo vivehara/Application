@@ -2,9 +2,9 @@
   "name": "vivehara-chatbot-backend",
   "version": "1.0.0",
   "description": "Secure API Proxy for Gemini chatbot widget",
-  "main": "server.js",
+  "main": "agent.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node agent.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
