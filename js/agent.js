@@ -5,16 +5,38 @@ require('dotenv').config();
 
 const app = express();
 
-// 1. FIXED: Allow CORS from your local machine and your live website
+// 1. Enable CORS for all incoming requests (crucial for widget.js)
 app.use(cors()); 
 app.use(express.json());
 
-// Initialize Gemini Client safely using system environment variable
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// 2. Safe/Lazy initialization helper to prevent startup crashes
+let ai = null;
+function getGeminiClient() {
+  if (!ai) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("Missing GEMINI_API_KEY environment variable. Please add it to your Render Environment settings.");
+    }
+    ai = new GoogleGenAI({ apiKey: apiKey });
+  }
+  return ai;
+}
+
+// 3. Simple health-check endpoint to verify your server is alive
+app.get('/health', (req, res) => {
+  res.json({ status: "ok", message: "Aether AI Proxy is online and healthy!" });
+});
 
 app.post('/api/agent/chat', async (req, res) => {
   try {
     const { messages } = req.body;
+    
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: "No messages payload provided." });
+    }
+
+    // Get the safely initialized client
+    const client = getGeminiClient();
     
     // Map messages history to Gemini API format
     const contents = messages.map(msg => ({
@@ -22,7 +44,7 @@ app.post('/api/agent/chat', async (req, res) => {
       parts: [{ text: msg.content }]
     }));
 
-    const response = await ai.models.generateContent({
+    const response = await client.models.generateContent({
       model: "gemini-3.5-flash",
       contents: contents,
       config: {
@@ -33,11 +55,11 @@ app.post('/api/agent/chat', async (req, res) => {
 
     res.json({ text: response.text });
   } catch (error) {
-    console.error("Error in chat proxy:", error);
+    console.error("🔴 Error in chat proxy:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
-// 2. FIXED: Use Render's dynamic port variable
+// 4. Use Render's dynamic port variable
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Proxy active on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Proxy active on port ${PORT}`));
